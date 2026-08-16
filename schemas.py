@@ -32,6 +32,12 @@ class NoteCreate(BaseModel):
     content: str = Field(..., min_length=1)
     user_id: int 
     
+# Schema for updating a note
+class NoteUpdate(BaseModel):
+    title: str = Field(..., min_length=1, max_length=50)
+    content: str = Field(..., min_length=1)
+    user_id: int    
+    
 # Schema for returning a note (outgoing payload)
 class NoteResponse(BaseModel):
     id: int
@@ -41,3 +47,10 @@ class NoteResponse(BaseModel):
     
     class Config:
         from_attributes = True
+        
+# Schema for JWT token authorization
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user_id: int
+    username: str

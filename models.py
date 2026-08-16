@@ -11,7 +11,7 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     
     notes = relationship("Note", back_populates="owner")
-    
+    documents = relationship("Document", back_populates="owner")
     
 class Note(Base):
     
@@ -23,3 +23,13 @@ class Note(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     
     owner = relationship("User", back_populates="notes")
+    
+class Document(Base):
+    
+    __tablename__ = "documents"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    filename = Column(String, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    
+    owner = relationship("User", back_populates="documents")
