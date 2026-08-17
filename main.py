@@ -1,4 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File
+from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
@@ -6,12 +8,30 @@ from database import engine, Base, get_db
 import models
 import schemas
 import security
-from rag import extract_text, chunk_text, embed_and_store, retrieve_context
+from rag import extract_text, chunk_text, embed_and_store, retrieve_context, delete_document_embeddings
+from llm import generate_rag_answer
+
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from fastapi import Request
 
 # Create SQLite database tables 
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Test", description="Test Description", version="0.1.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 @app.get("/")
 def read_root_test():
@@ -52,7 +72,8 @@ def register_user(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
     
 # login post method
 @app.post("/login", response_model = schemas.TokenResponse)
-def login_user(login_data: schemas.UserLogin, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def login_user(request: Request, login_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     """
     Authenticates a user by checking their username and verifying 
     their plain text password against the stored bcrypt hash.
@@ -71,6 +92,7 @@ def login_user(login_data: schemas.UserLogin, db: Session = Depends(get_db)):
     
     return { 
         "access_token": access_token,
+        "token_type": "bearer",
         "message": "Login successful!",
         "user_id": user.id,
         "username": user.username
@@ -83,7 +105,7 @@ def get_my_profile(current_user: models.User = Depends(security.get_current_user
     
 # create note method
 @app.post("/notes", response_model=schemas.NoteResponse, status_code=status.HTTP_201_CREATED)
-def create_node(note_data: schemas.NoteCreate, current_user: models.User = Depends(security.get_current_user), db: Session = Depends(get_db)):
+def create_note(note_data: schemas.NoteCreate, current_user: models.User = Depends(security.get_current_user), db: Session = Depends(get_db)):
     """
     Creates a new note tied to a specific user_id.
     """
@@ -187,17 +209,62 @@ def upload_document(current_user: models.User = Depends(security.get_current_use
     
 
 @app.post("/ask")
-def ask_question(question: str, current_user: models.User = Depends(security.get_current_user)):
+def ask_question(request: schemas.AskRequest, current_user: models.User = Depends(security.get_current_user)):
     
-    context_chunks = retrieve_context(question, user_id=current_user.id)
-    context_text = "\n\n".join(context_chunks)
+    """
+    RAG Pipeline:
+    1. Retrieves top-k semantically relevant chunks from ChromaDB for the user.
+    2. Sends context chunks + question to Groq (Llama 3.1).
+    3. Returns the answer along with the source chunks.
+    """
     
-    prompt = f"""Answer the question using ONLY the context below. If the answer isn't in the context, say so.
+    # 1. Retrieve matching chunks from ChromaDB
+    context_chunks = retrieve_context(request.question, user_id=current_user.id)
+    
+    # 2. Call the LLM to synthesize the final answer
+    answer = generate_rag_answer(question=request.question, context_chunks=context_chunks)
+    
+    # 3. Return structured payload
+    return {
+        "question": request.question,
+        "answer": answer,
+        "retrieved_chunks": context_chunks
+    }
+    
+    
+@app.get("/documents", response_model=list[schemas.DocumentResponse])
+def get_user_documents(current_user: models.User = Depends(security.get_current_user), db: Session = Depends(get_db)):
+    """
+    Returns all metadata records of uploaded files belonging to the current user.
+    """
+    return db.query(models.Document).filter(models.Document.user_id == current_user.id).all()
 
-Context:
-{context_text}
 
-Question: {question}"""
-
-    # placeholder — swap in your LLM call here (next step)
-    return {"prompt_sent_to_llm": prompt, "retrieved_chunks": context_chunks}
+@app.delete("/documents/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_document(doc_id: int, current_user: models.User = Depends(security.get_current_user), db: Session = Depends(get_db)):  
+    """
+    Cascade Deletion:
+    1. Verifies the document exists and belongs to the authenticated user.
+    2. Deletes associated vector embeddings from ChromaDB.
+    3. Deletes the database record from SQLite.
+    """
+    
+    doc = db.query(models.Document).filter(models.Document.id == doc_id).first()
+    
+    if not doc: 
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = "Document not found.")
+    
+    if doc.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail = "You do not have permission to delete the documetn.")
+    
+    try:
+        delete_document_embeddings(doc_id=doc.id, user_id=current_user.id)
+        
+        db.delete(doc)
+        db.commit()
+        return None
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail = f"Failed to delete document: {str(e)}")
+          

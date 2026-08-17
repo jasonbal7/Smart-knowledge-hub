@@ -67,7 +67,7 @@ def retrieve_context(query: str, user_id: int, top_k: int = 4) -> list[str]:
     query_embedding = embedder.encode([query]).tolist()
     
     # search for similar chunks belonging to this user
-    results = collection.query(query_embedding=query_embedding, n_results=top_k, where={"user_id": user_id},)
+    results = collection.query(query_embeddings=query_embedding, n_results=top_k, where={"user_id": user_id},)
     
     # return documents if we have found any else empty list 
     documents = results["documents"]    
@@ -75,5 +75,19 @@ def retrieve_context(query: str, user_id: int, top_k: int = 4) -> list[str]:
         return documents[0]
     
     return []
-    
+
+
+def delete_document_embeddings(doc_id: int, user_id: int) -> None:
+    """
+    Deletes all vector embeddings associated with a specific document
+    and user from ChromaDB to prevent orphaned vectors.
+    """
+    collection.delete(
+        where={
+            "$and": [
+                {"doc_id": {"$eq": doc_id}},
+                {"user_id": {"$eq": user_id}}
+            ]
+        }
+    )
     

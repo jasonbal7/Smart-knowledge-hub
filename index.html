@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Study Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #14181f;
+    --surface: #1d232d;
+    --surface-raised: #232a35;
+    --hairline: #2b3340;
+    --ink: #e8e6de;
+    --ink-dim: #9aa3b2;
+    --lamp: #c9a227;
+    --lamp-dim: #8a7220;
+    --teal: #4a7c7c;
+    --danger: #b0554a;
+    --radius: 3px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    min-height:100vh;
+  }
+  h1,h2,h3{
+    font-family:'Source Serif 4', serif;
+    font-weight:600;
+    margin:0;
+  }
+  .mono{ font-family:'IBM Plex Mono', monospace; }
+
+  /* ---------- Auth screen ---------- */
+  #auth-screen{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  .catalog-card{
+    background:var(--surface);
+    border:1px solid var(--hairline);
+    border-radius:var(--radius);
+    width:100%;
+    max-width:380px;
+    padding:32px;
+    position:relative;
+  }
+  .catalog-card::before{
+    content:"";
+    position:absolute;
+    top:-1px; left:24px;
+    width:64px; height:6px;
+    background:var(--lamp);
+    border-radius:0 0 3px 3px;
+  }
+  .call-number{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.08em;
+    color:var(--lamp);
+    text-transform:uppercase;
+    margin-bottom:6px;
+  }
+  .catalog-card h1{ font-size:26px; margin-bottom:4px; }
+  .catalog-card p.sub{ color:var(--ink-dim); font-size:13px; margin:0 0 24px; }
+
+  label{
+    display:block;
+    font-size:12px;
+    color:var(--ink-dim);
+    margin-bottom:6px;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+  }
+  input[type=text], input[type=password]{
+    width:100%;
+    background:var(--bg);
+    border:1px solid var(--hairline);
+    color:var(--ink);
+    padding:10px 12px;
+    border-radius:var(--radius);
+    font-size:14px;
+    font-family:'IBM Plex Sans', sans-serif;
+    margin-bottom:16px;
+  }
+  input:focus{ outline:2px solid var(--lamp); outline-offset:1px; }
+
+  button{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-weight:500;
+    font-size:14px;
+    border-radius:var(--radius);
+    border:1px solid transparent;
+    padding:10px 16px;
+    cursor:pointer;
+  }
+  .btn-primary{
+    background:var(--lamp);
+    color:#1a1400;
+    width:100%;
+  }
+  .btn-primary:hover{ background:#dcb32d; }
+  .btn-ghost{
+    background:transparent;
+    border-color:var(--hairline);
+    color:var(--ink-dim);
+    width:100%;
+    margin-top:10px;
+  }
+  .btn-ghost:hover{ color:var(--ink); border-color:var(--ink-dim); }
+
+  .form-error{
+    background:rgba(176,85,74,0.15);
+    border:1px solid var(--danger);
+    color:#e0a99f;
+    font-size:13px;
+    padding:8px 10px;
+    border-radius:var(--radius);
+    margin-bottom:16px;
+    display:none;
+  }
+
+  /* ---------- App shell ---------- */
+  #app-screen{ display:none; min-height:100vh; }
+  .shell{
+    display:grid;
+    grid-template-columns:220px 1fr;
+    min-height:100vh;
+  }
+  .rail{
+    background:var(--surface);
+    border-right:1px solid var(--hairline);
+    padding:24px 0;
+    display:flex;
+    flex-direction:column;
+  }
+  .rail-header{ padding:0 20px 24px; }
+  .rail-header .call-number{ margin-bottom:2px; }
+  .rail-header h1{ font-size:19px; }
+  .rail-user{ font-size:12px; color:var(--ink-dim); margin-top:4px; font-family:'IBM Plex Mono', monospace; }
+
+  .tab{
+    position:relative;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:12px 20px 12px 24px;
+    color:var(--ink-dim);
+    cursor:pointer;
+    font-size:14px;
+    border-left:3px solid transparent;
+  }
+  .tab:hover{ color:var(--ink); background:var(--surface-raised); }
+  .tab.active{
+    color:var(--ink);
+    background:var(--surface-raised);
+    border-left:3px solid var(--lamp);
+  }
+  .tab .tag{
+    position:absolute;
+    right:16px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10px;
+    color:var(--lamp-dim);
+  }
+  .tab.active .tag{ color:var(--lamp); }
+
+  .rail-footer{ margin-top:auto; padding:16px 20px 0; }
+
+  .main{ padding:32px 40px; overflow-y:auto; }
+  .main-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    margin-bottom:24px;
+    border-bottom:1px solid var(--hairline);
+    padding-bottom:16px;
+  }
+  .main-header h2{ font-size:24px; }
+  .main-header .count{ font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--ink-dim); }
+
+  .panel{ display:none; }
+  .panel.active{ display:block; }
+
+  /* ---------- Note / Doc index cards ---------- */
+  .index-card{
+    background:var(--surface);
+    border:1px solid var(--hairline);
+    border-radius:var(--radius);
+    padding:16px 18px;
+    margin-bottom:12px;
+    position:relative;
+  }
+  .index-card::before{
+    content:"";
+    position:absolute;
+    left:0; top:12px; bottom:12px;
+    width:3px;
+    background:var(--teal);
+    border-radius:2px;
+  }
+  .index-card-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:12px;
+  }
+  .index-card h3{ font-size:16px; margin-bottom:6px; }
+  .index-card .body-text{ font-size:14px; color:var(--ink-dim); line-height:1.5; white-space:pre-wrap; }
+  .stamp{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10px;
+    color:var(--lamp);
+    border:1px solid var(--lamp-dim);
+    padding:2px 6px;
+    border-radius:2px;
+    white-space:nowrap;
+    transform:rotate(-2deg);
+  }
+  .card-actions{ display:flex; gap:8px; margin-top:12px; }
+  .btn-sm{
+    background:transparent;
+    border:1px solid var(--hairline);
+    color:var(--ink-dim);
+    font-size:12px;
+    padding:5px 10px;
+  }
+  .btn-sm:hover{ color:var(--ink); border-color:var(--ink-dim); }
+  .btn-sm.danger:hover{ color:var(--danger); border-color:var(--danger); }
+
+  .new-form{
+    background:var(--surface);
+    border:1px dashed var(--hairline);
+    border-radius:var(--radius);
+    padding:18px;
+    margin-bottom:24px;
+  }
+  .new-form textarea{
+    width:100%;
+    background:var(--bg);
+    border:1px solid var(--hairline);
+    color:var(--ink);
+    padding:10px 12px;
+    border-radius:var(--radius);
+    font-size:14px;
+    font-family:'IBM Plex Sans', sans-serif;
+    margin-bottom:12px;
+    resize:vertical;
+    min-height:70px;
+  }
+  .row{ display:flex; gap:10px; }
+  .row > *{ flex:1; }
+
+  .empty-state{
+    color:var(--ink-dim);
+    font-size:14px;
+    padding:32px 0;
+    text-align:center;
+    border:1px dashed var(--hairline);
+    border-radius:var(--radius);
+  }
+
+  /* ---------- Upload / documents ---------- */
+  .upload-drop{
+    border:1px dashed var(--hairline);
+    border-radius:var(--radius);
+    padding:24px;
+    text-align:center;
+    margin-bottom:24px;
+    color:var(--ink-dim);
+    font-size:13px;
+  }
+  .upload-drop.dragover{ border-color:var(--lamp); color:var(--ink); }
+  #file-input{ display:none; }
+
+  /* ---------- Ask panel ---------- */
+  .ask-log{
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+    margin-bottom:20px;
+  }
+  .qa-block{
+    background:var(--surface);
+    border:1px solid var(--hairline);
+    border-radius:var(--radius);
+    padding:16px 18px;
+  }
+  .qa-question{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    color:var(--lamp);
+    margin-bottom:10px;
+  }
+  .qa-answer{ font-size:14px; line-height:1.6; white-space:pre-wrap; margin-bottom:10px; }
+  details.chunks{ font-size:12px; color:var(--ink-dim); }
+  details.chunks summary{ cursor:pointer; color:var(--teal); }
+  .chunk-item{
+    background:var(--bg);
+    border:1px solid var(--hairline);
+    border-radius:var(--radius);
+    padding:8px 10px;
+    margin-top:8px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    white-space:pre-wrap;
+  }
+  .ask-bar{ display:flex; gap:10px; }
+  .ask-bar input{ margin-bottom:0; }
+  .ask-bar button{ white-space:nowrap; }
+
+  .toast{
+    position:fixed;
+    bottom:24px; right:24px;
+    background:var(--surface-raised);
+    border:1px solid var(--hairline);
+    border-left:3px solid var(--lamp);
+    padding:12px 16px;
+    border-radius:var(--radius);
+    font-size:13px;
+    max-width:320px;
+    opacity:0;
+    transform:translateY(8px);
+    transition:opacity 0.2s, transform 0.2s;
+    pointer-events:none;
+    z-index:100;
+  }
+  .toast.show{ opacity:1; transform:translateY(0); }
+  .toast.error{ border-left-color:var(--danger); }
+
+  @media (max-width:720px){
+    .shell{ grid-template-columns:1fr; }
+    .rail{ flex-direction:row; overflow-x:auto; padding:12px; }
+    .rail-header{ display:none; }
+    .rail-footer{ margin:0; padding:0 0 0 12px; }
+    .tab{ padding:8px 14px; border-left:none; border-bottom:3px solid transparent; }
+    .tab.active{ border-left:none; border-bottom:3px solid var(--lamp); }
+    .tab .tag{ display:none; }
+    .main{ padding:20px; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ transition:none !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ AUTH SCREEN ============ -->
+<div id="auth-screen">
+  <div class="catalog-card">
+    <div class="call-number">CATALOG NO. SKH-001</div>
+    <h1 id="auth-title">Sign in</h1>
+    <p class="sub" id="auth-sub">Access your notes, documents, and knowledge base.</p>
+
+    <div class="form-error" id="auth-error"></div>
+
+    <form id="auth-form">
+      <label for="auth-username">Username</label>
+      <input type="text" id="auth-username" autocomplete="username" required>
+
+      <label for="auth-password">Password</label>
+      <input type="password" id="auth-password" autocomplete="current-password" required>
+
+      <button type="submit" class="btn-primary" id="auth-submit">Sign in</button>
+    </form>
+    <button type="button" class="btn-ghost" id="auth-toggle">Need an account? Register instead</button>
+  </div>
+</div>
+
+<!-- ============ APP SCREEN ============ -->
+<div id="app-screen">
+  <div class="shell">
+    <nav class="rail">
+      <div class="rail-header">
+        <div class="call-number">SKH-001</div>
+        <h1>Study Hub</h1>
+        <div class="rail-user" id="rail-username"></div>
+      </div>
+
+      <div class="tab active" data-panel="notes">Notes <span class="tag" id="tag-notes">00</span></div>
+      <div class="tab" data-panel="documents">Documents <span class="tag" id="tag-docs">00</span></div>
+      <div class="tab" data-panel="ask">Ask <span class="tag">RAG</span></div>
+
+      <div class="rail-footer">
+        <button class="btn-ghost" id="logout-btn">Sign out</button>
+      </div>
+    </nav>
+
+    <main class="main">
+
+      <!-- NOTES -->
+      <section class="panel active" id="panel-notes">
+        <div class="main-header">
+          <h2>Notes</h2>
+          <span class="count" id="notes-count">0 entries</span>
+        </div>
+
+        <div class="new-form">
+          <label for="note-title">Title</label>
+          <input type="text" id="note-title" placeholder="e.g. Chapter 3 — Recursion">
+          <label for="note-content">Content</label>
+          <textarea id="note-content" placeholder="Write your note..."></textarea>
+          <button class="btn-primary" id="note-create-btn" style="width:auto;">Add note</button>
+        </div>
+
+        <div id="notes-list"></div>
+      </section>
+
+      <!-- DOCUMENTS -->
+      <section class="panel" id="panel-documents">
+        <div class="main-header">
+          <h2>Documents</h2>
+          <span class="count" id="docs-count">0 files</span>
+        </div>
+
+        <div class="upload-drop" id="upload-drop">
+          <p><strong>Drop a .pdf or .txt file here</strong>, or</p>
+          <button class="btn-sm" id="upload-btn" style="margin-top:8px;">Choose file</button>
+          <input type="file" id="file-input" accept=".pdf,.txt">
+          <p id="upload-status" class="mono" style="margin-top:10px; font-size:11px;"></p>
+        </div>
+
+        <div id="docs-list"></div>
+      </section>
+
+      <!-- ASK -->
+      <section class="panel" id="panel-ask">
+        <div class="main-header">
+          <h2>Ask your knowledge base</h2>
+          <span class="count">RAG pipeline</span>
+        </div>
+
+        <div class="ask-log" id="ask-log">
+          <div class="empty-state" id="ask-empty">Ask a question about your uploaded documents. The assistant only answers from what you've uploaded.</div>
+        </div>
+
+        <div class="ask-bar">
+          <input type="text" id="ask-input" placeholder="Summarize chapter 3 and give me 3 practice questions...">
+          <button class="btn-primary" id="ask-btn" style="width:auto;">Ask</button>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ==============================================================
+   CONFIG — point this at your running FastAPI backend
+============================================================== */
+const API_BASE = "http://127.0.0.1:8000";
+
+/* ==============================================================
+   STATE
+============================================================== */
+let token = localStorage.getItem("skh_token") || null;
+let username = localStorage.getItem("skh_username") || null;
+let authMode = "login"; // or "register"
+
+/* ==============================================================
+   HELPERS
+============================================================== */
+function showToast(message, isError=false){
+  const t = document.getElementById("toast");
+  t.textContent = message;
+  t.classList.toggle("error", isError);
+  t.classList.add("show");
+  clearTimeout(showToast._timer);
+  showToast._timer = setTimeout(()=> t.classList.remove("show"), 3200);
+}
+
+async function apiFetch(path, options={}){
+  const headers = options.headers || {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  if (options.body && !(options.body instanceof FormData)){
+    headers["Content-Type"] = "application/json";
+  }
+  const res = await fetch(`${API_BASE}${path}`, {...options, headers});
+  if (res.status === 401){
+    handleLogout();
+    throw new Error("Session expired — please sign in again.");
+  }
+  if (!res.ok){
+    let detail = `Request failed (${res.status})`;
+    try{ const data = await res.json(); detail = data.detail || detail; }catch(e){}
+    throw new Error(detail);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+function escapeHtml(str){
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+/* ==============================================================
+   AUTH
+============================================================== */
+const authForm = document.getElementById("auth-form");
+const authToggle = document.getElementById("auth-toggle");
+const authError = document.getElementById("auth-error");
+
+authToggle.addEventListener("click", () => {
+  authMode = authMode === "login" ? "register" : "login";
+  document.getElementById("auth-title").textContent = authMode === "login" ? "Sign in" : "Create account";
+  document.getElementById("auth-sub").textContent = authMode === "login"
+    ? "Access your notes, documents, and knowledge base."
+    : "Set up a new catalog entry to get started.";
+  document.getElementById("auth-submit").textContent = authMode === "login" ? "Sign in" : "Register";
+  authToggle.textContent = authMode === "login" ? "Need an account? Register instead" : "Already registered? Sign in";
+  authError.style.display = "none";
+});
+
+authForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  authError.style.display = "none";
+  const u = document.getElementById("auth-username").value.trim();
+  const p = document.getElementById("auth-password").value;
+
+  try{
+    if (authMode === "register"){
+      await apiFetch("/register", {
+        method: "POST",
+        body: JSON.stringify({ username: u, password: p })
+      });
+      showToast("Account created — signing you in...");
+    }
+
+    // Login uses OAuth2PasswordRequestForm -> expects form-encoded body
+    const form = new URLSearchParams();
+    form.append("username", u);
+    form.append("password", p);
+
+    const res = await fetch(`${API_BASE}/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: form
+    });
+    if (!res.ok){
+      let detail = "Invalid username or password";
+      try{ const data = await res.json(); detail = data.detail || detail; }catch(err){}
+      throw new Error(detail);
+    }
+    const data = await res.json();
+    token = data.access_token;
+    username = data.username;
+    localStorage.setItem("skh_token", token);
+    localStorage.setItem("skh_username", username);
+    enterApp();
+  }catch(err){
+    authError.textContent = err.message;
+    authError.style.display = "block";
+  }
+});
+
+function handleLogout(){
+  token = null;
+  username = null;
+  localStorage.removeItem("skh_token");
+  localStorage.removeItem("skh_username");
+  document.getElementById("app-screen").style.display = "none";
+  document.getElementById("auth-screen").style.display = "flex";
+}
+document.getElementById("logout-btn").addEventListener("click", handleLogout);
+
+/* ==============================================================
+   TAB NAVIGATION
+============================================================== */
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+    tab.classList.add("active");
+    document.getElementById(`panel-${tab.dataset.panel}`).classList.add("active");
+  });
+});
+
+function enterApp(){
+  document.getElementById("auth-screen").style.display = "none";
+  document.getElementById("app-screen").style.display = "block";
+  document.getElementById("rail-username").textContent = `@${username}`;
+  loadNotes();
+  loadDocuments();
+}
+
+/* ==============================================================
+   NOTES
+============================================================== */
+function formatDate(iso){
+  if (!iso) return "";
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { month:"short", day:"numeric", year:"numeric" });
+}
+
+async function loadNotes(){
+  try{
+    const notes = await apiFetch("/notes");
+    renderNotes(notes);
+  }catch(err){ showToast(err.message, true); }
+}
+
+function renderNotes(notes){
+  const list = document.getElementById("notes-list");
+  document.getElementById("notes-count").textContent = `${notes.length} ${notes.length === 1 ? "entry" : "entries"}`;
+  document.getElementById("tag-notes").textContent = String(notes.length).padStart(2, "0");
+
+  if (notes.length === 0){
+    list.innerHTML = `<div class="empty-state">No notes yet — add your first one above.</div>`;
+    return;
+  }
+
+  list.innerHTML = notes.map(n => `
+    <div class="index-card" data-id="${n.id}">
+      <div class="index-card-head">
+        <h3>${escapeHtml(n.title)}</h3>
+        <span class="stamp">NOTE #${n.id}</span>
+      </div>
+      <div class="body-text">${escapeHtml(n.content)}</div>
+      <div class="card-actions">
+        <button class="btn-sm edit-note-btn">Edit</button>
+        <button class="btn-sm danger delete-note-btn">Delete</button>
+      </div>
+    </div>
+  `).join("");
+
+  list.querySelectorAll(".delete-note-btn").forEach(btn => {
+    btn.addEventListener("click", async (e) => {
+      const id = e.target.closest(".index-card").dataset.id;
+      if (!confirm("Delete this note?")) return;
+      try{
+        await apiFetch(`/notes/${id}`, { method: "DELETE" });
+        showToast("Note deleted.");
+        loadNotes();
+      }catch(err){ showToast(err.message, true); }
+    });
+  });
+
+  list.querySelectorAll(".edit-note-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      const card = e.target.closest(".index-card");
+      const id = card.dataset.id;
+      const currentTitle = card.querySelector("h3").textContent;
+      const currentBody = card.querySelector(".body-text").textContent;
+
+      card.innerHTML = `
+        <input type="text" class="edit-title" value="${escapeHtml(currentTitle)}" style="margin-bottom:10px;">
+        <textarea class="edit-content" style="min-height:90px;">${escapeHtml(currentBody)}</textarea>
+        <div class="card-actions">
+          <button class="btn-sm save-edit-btn">Save</button>
+          <button class="btn-sm cancel-edit-btn">Cancel</button>
+        </div>
+      `;
+
+      card.querySelector(".save-edit-btn").addEventListener("click", async () => {
+        const title = card.querySelector(".edit-title").value.trim();
+        const content = card.querySelector(".edit-content").value.trim();
+        if (!title || !content){ showToast("Title and content are required.", true); return; }
+        try{
+          await apiFetch(`/notes/${id}`, {
+            method: "PUT",
+            body: JSON.stringify({ title, content })
+          });
+          showToast("Note updated.");
+          loadNotes();
+        }catch(err){ showToast(err.message, true); }
+      });
+
+      card.querySelector(".cancel-edit-btn").addEventListener("click", loadNotes);
+    });
+  });
+}
+
+document.getElementById("note-create-btn").addEventListener("click", async () => {
+  const title = document.getElementById("note-title").value.trim();
+  const content = document.getElementById("note-content").value.trim();
+  if (!title || !content){ showToast("Title and content are required.", true); return; }
+  try{
+    await apiFetch("/notes", {
+      method: "POST",
+      body: JSON.stringify({ title, content })
+    });
+    document.getElementById("note-title").value = "";
+    document.getElementById("note-content").value = "";
+    showToast("Note added.");
+    loadNotes();
+  }catch(err){ showToast(err.message, true); }
+});
+
+/* ==============================================================
+   DOCUMENTS
+============================================================== */
+async function loadDocuments(){
+  try{
+    const docs = await apiFetch("/documents");
+    renderDocuments(docs);
+  }catch(err){ showToast(err.message, true); }
+}
+
+function renderDocuments(docs){
+  const list = document.getElementById("docs-list");
+  document.getElementById("docs-count").textContent = `${docs.length} ${docs.length === 1 ? "file" : "files"}`;
+  document.getElementById("tag-docs").textContent = String(docs.length).padStart(2, "0");
+
+  if (docs.length === 0){
+    list.innerHTML = `<div class="empty-state">No documents indexed yet — upload a syllabus or lecture file above.</div>`;
+    return;
+  }
+
+  list.innerHTML = docs.map(d => `
+    <div class="index-card" data-id="${d.id}">
+      <div class="index-card-head">
+        <h3>${escapeHtml(d.filename)}</h3>
+        <span class="stamp">${formatDate(d.uploaded_at)}</span>
+      </div>
+      <div class="body-text mono">doc_id: ${d.id} · indexed in vector store</div>
+      <div class="card-actions">
+        <button class="btn-sm danger delete-doc-btn">Delete</button>
+      </div>
+    </div>
+  `).join("");
+
+  list.querySelectorAll(".delete-doc-btn").forEach(btn => {
+    btn.addEventListener("click", async (e) => {
+      const id = e.target.closest(".index-card").dataset.id;
+      if (!confirm("Delete this document and its embeddings?")) return;
+      try{
+        await apiFetch(`/documents/${id}`, { method: "DELETE" });
+        showToast("Document deleted.");
+        loadDocuments();
+      }catch(err){ showToast(err.message, true); }
+    });
+  });
+}
+
+const fileInput = document.getElementById("file-input");
+const uploadDrop = document.getElementById("upload-drop");
+const uploadStatus = document.getElementById("upload-status");
+
+document.getElementById("upload-btn").addEventListener("click", () => fileInput.click());
+
+fileInput.addEventListener("change", () => {
+  if (fileInput.files.length) uploadFile(fileInput.files[0]);
+});
+
+["dragover", "dragenter"].forEach(evt => {
+  uploadDrop.addEventListener(evt, (e) => { e.preventDefault(); uploadDrop.classList.add("dragover"); });
+});
+["dragleave", "drop"].forEach(evt => {
+  uploadDrop.addEventListener(evt, (e) => { e.preventDefault(); uploadDrop.classList.remove("dragover"); });
+});
+uploadDrop.addEventListener("drop", (e) => {
+  const file = e.dataTransfer.files[0];
+  if (file) uploadFile(file);
+});
+
+async function uploadFile(file){
+  uploadStatus.textContent = `Uploading ${file.name}...`;
+  const formData = new FormData();
+  formData.append("file", file);
+  try{
+    const headers = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE}/upload`, { method: "POST", headers, body: formData });
+    if (!res.ok){
+      let detail = "Upload failed";
+      try{ const data = await res.json(); detail = data.detail || detail; }catch(err){}
+      throw new Error(detail);
+    }
+    const data = await res.json();
+    uploadStatus.textContent = `Indexed: ${data.doc_id ?? ""}`;
+    showToast("Document uploaded and indexed.");
+    loadDocuments();
+  }catch(err){
+    uploadStatus.textContent = "";
+    showToast(err.message, true);
+  }
+  fileInput.value = "";
+}
+
+/* ==============================================================
+   ASK (RAG)
+============================================================== */
+const askLog = document.getElementById("ask-log");
+const askInput = document.getElementById("ask-input");
+const askBtn = document.getElementById("ask-btn");
+
+async function submitQuestion(){
+  const question = askInput.value.trim();
+  if (!question) return;
+
+  document.getElementById("ask-empty")?.remove();
+  askInput.value = "";
+  askBtn.disabled = true;
+  askBtn.textContent = "Thinking...";
+
+  const block = document.createElement("div");
+  block.className = "qa-block";
+  block.innerHTML = `
+    <div class="qa-question">Q: ${escapeHtml(question)}</div>
+    <div class="qa-answer mono" style="color:var(--ink-dim);">retrieving context...</div>
+  `;
+  askLog.appendChild(block);
+  block.scrollIntoView({ behavior: "smooth", block: "end" });
+
+  try{
+    const data = await apiFetch("/ask", {
+      method: "POST",
+      body: JSON.stringify({ question })
+    });
+
+    const chunksHtml = (data.retrieved_chunks || []).map(c =>
+      `<div class="chunk-item">${escapeHtml(c)}</div>`
+    ).join("");
+
+    block.innerHTML = `
+      <div class="qa-question">Q: ${escapeHtml(question)}</div>
+      <div class="qa-answer">${escapeHtml(data.answer)}</div>
+      <details class="chunks">
+        <summary>${(data.retrieved_chunks || []).length} source chunk(s) retrieved</summary>
+        ${chunksHtml || "<div class='chunk-item'>No matching chunks found.</div>"}
+      </details>
+    `;
+  }catch(err){
+    block.innerHTML = `
+      <div class="qa-question">Q: ${escapeHtml(question)}</div>
+      <div class="qa-answer" style="color:var(--danger);">Error: ${escapeHtml(err.message)}</div>
+    `;
+  }finally{
+    askBtn.disabled = false;
+    askBtn.textContent = "Ask";
+    block.scrollIntoView({ behavior: "smooth", block: "end" });
+  }
+}
+
+askBtn.addEventListener("click", submitQuestion);
+askInput.addEventListener("keydown", (e) => { if (e.key === "Enter") submitQuestion(); });
+
+/* ==============================================================
+   INIT
+============================================================== */
+if (token && username){
+  enterApp();
+}
+</script>
+</body>
+</html>

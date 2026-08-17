@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-
+from datetime import datetime
 
 # Schema for incoming registration request
 class UserCreate(BaseModel):
@@ -30,13 +30,11 @@ class LoginResponse(BaseModel):
 class NoteCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=50)
     content: str = Field(..., min_length=1)
-    user_id: int 
     
 # Schema for updating a note
 class NoteUpdate(BaseModel):
     title: str = Field(..., min_length=1, max_length=50)
-    content: str = Field(..., min_length=1)
-    user_id: int    
+    content: str = Field(..., min_length=1)  
     
 # Schema for returning a note (outgoing payload)
 class NoteResponse(BaseModel):
@@ -48,9 +46,30 @@ class NoteResponse(BaseModel):
     class Config:
         from_attributes = True
         
+        
+# Schema for Document 
+class DocumentResponse(BaseModel):
+    id: int
+    filename: str
+    user_id: int
+    uploaded_at: datetime
+
+    class Config:
+        from_attributes = True
+        
 # Schema for JWT token authorization
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
-    user_id: int
-    username: str
+    message: str | None = None
+    user_id: int | None = None
+    username: str | None = None
+    
+# Schemas for ask usage 
+class AskRequest(BaseModel):
+    question: str = Field(..., min_length=2, description="The question to ask.")
+    
+class AskResponse(BaseModel):
+    question: str
+    answer: str
+    retrieved_chunks: list[str]

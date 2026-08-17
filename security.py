@@ -5,13 +5,18 @@ import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
+from dotenv import load_dotenv
 
 from database import get_db
 import models
 
+load_dotenv()
 
 # --- CONFIGURATION ---
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "super-secret-key-change-in-production-12345678")      # signs JWT
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")      # signs JWT
+if not SECRET_KEY:
+    raise RuntimeError("CRITICAL: JWT_SECRET_KEY is not set in the environment or .env file.")
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 
